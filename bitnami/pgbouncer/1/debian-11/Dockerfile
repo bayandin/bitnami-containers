@@ -1,19 +1,27 @@
 # Copyright VMware, Inc.
 # SPDX-License-Identifier: APACHE-2.0
 
+FROM docker.io/bitnami/minideb:bullseye AS builder
+
+ARG PGBOUNCER_REPO=pgbouncer/pgbouncer
+
+# Runtime dependencies copied from the target image
+RUN install_packages ca-certificates curl libaudit1 libbsd0 libc-ares2 libcap-ng0 libedit2 libevent-2.1-7 libffi7 libgcc-s1 libgmp10 libgnutls30 libhogweed6 libicu67 libidn2-0 libldap-2.4-2 liblzma5 libmd0 libnettle8 libp11-kit0 libpam0g libsasl2-2 libssl1.1 libstdc++6 libtasn1-6 libtinfo6 libunistring2 libuuid1 libxml2 libxslt1.1 locales procps zlib1g
+# Build dependencies to match upstream linkage (ldd /opt/bitnami/pgbouncer/bin/pgbouncer)
+RUN install_packages libtool m4 automake pkg-config libevent-dev libssl-dev make python3 python3-pypandoc libc-ares-dev libpam0g-dev libcap-ng-dev libaudit-dev
+
+COPY pgbouncer-git /pgbouncer-git
+WORKDIR /pgbouncer-git
+
+RUN ./autogen.sh && \
+    ./configure --prefix=/opt/bitnami/pgbouncer --with-pam --with-cares && \
+    make && \
+    make install
+
+
 FROM docker.io/bitnami/minideb:bullseye
 
 ARG TARGETARCH
-
-LABEL com.vmware.cp.artifact.flavor="sha256:1e1b4657a77f0d47e9220f0c37b9bf7802581b93214fff7d1bd2364c8bf22e8e" \
-      org.opencontainers.image.base.name="docker.io/bitnami/minideb:bullseye" \
-      org.opencontainers.image.created="2024-02-01T13:03:22Z" \
-      org.opencontainers.image.description="Application packaged by VMware, Inc" \
-      org.opencontainers.image.licenses="Apache-2.0" \
-      org.opencontainers.image.ref.name="1.22.0-debian-11-r1" \
-      org.opencontainers.image.title="pgbouncer" \
-      org.opencontainers.image.vendor="VMware, Inc." \
-      org.opencontainers.image.version="1.22.0"
 
 ENV HOME="/" \
     OS_ARCH="${TARGETARCH:-amd64}" \
@@ -29,7 +37,6 @@ RUN mkdir -p /tmp/bitnami/pkg/cache/ ; cd /tmp/bitnami/pkg/cache/ ; \
       "wait-for-port-1.0.7-7-linux-${OS_ARCH}-debian-11" \
       "postgresql-client-14.10.0-1-linux-${OS_ARCH}-debian-11" \
       "ini-file-1.4.6-7-linux-${OS_ARCH}-debian-11" \
-      "pgbouncer-1.22.0-0-linux-${OS_ARCH}-debian-11" \
     ) ; \
     for COMPONENT in "${COMPONENTS[@]}"; do \
       if [ ! -f "${COMPONENT}.tar.gz" ]; then \
@@ -40,6 +47,9 @@ RUN mkdir -p /tmp/bitnami/pkg/cache/ ; cd /tmp/bitnami/pkg/cache/ ; \
       tar -zxf "${COMPONENT}.tar.gz" -C /opt/bitnami --strip-components=2 --no-same-owner --wildcards '*/files' ; \
       rm -rf "${COMPONENT}".tar.gz{,.sha256} ; \
     done
+
+COPY --from=builder /opt/bitnami/pgbouncer /opt/bitnami/pgbouncer
+
 RUN apt-get autoremove --purge -y curl && \
     apt-get update && apt-get upgrade -y && \
     apt-get clean && rm -rf /var/lib/apt/lists /var/cache/apt/archives
