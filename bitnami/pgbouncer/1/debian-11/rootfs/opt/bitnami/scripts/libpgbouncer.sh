@@ -276,6 +276,7 @@ pgbouncer_initialize() {
             "query_timeout:${PGBOUNCER_QUERY_TIMEOUT}"
             "query_wait_timeout:${PGBOUNCER_QUERY_WAIT_TIMEOUT}"
             "client_idle_timeout:${PGBOUNCER_CLIENT_IDLE_TIMEOUT}"
+            "prepared_statement_cache_size:${PGBOUNCER_PREPARED_STATEMENT_CACHE_SIZE}"
         )
         for pair in "${key_value_pairs[@]}"; do
             local key value
