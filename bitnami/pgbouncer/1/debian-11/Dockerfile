@@ -3,20 +3,17 @@
 
 FROM docker.io/bitnami/minideb:bullseye AS builder
 
-ARG PGBOUNCER_COMMIT=619c661b18fe9d456f05cf50470b3f7edacdb13b
 ARG PGBOUNCER_REPO=knizhnik/pgbouncer
 
 # Runtime dependencies copied from the target image
 RUN install_packages ca-certificates curl libaudit1 libbsd0 libc-ares2 libcap-ng0 libedit2 libevent-2.1-7 libffi7 libgcc-s1 libgmp10 libgnutls30 libhogweed6 libicu67 libidn2-0 libldap-2.4-2 liblzma5 libmd0 libnettle8 libp11-kit0 libpam0g libsasl2-2 libssl1.1 libstdc++6 libtasn1-6 libtinfo6 libunistring2 libuuid1 libxml2 libxslt1.1 locales procps zlib1g
 # Build dependencies to match upstream linkage (ldd /opt/bitnami/pgbouncer/bin/pgbouncer)
-RUN install_packages git libtool m4 automake pkg-config libevent-dev libssl-dev make python3 python3-pypandoc libc-ares-dev libpam0g-dev libcap-ng-dev libaudit-dev
+RUN install_packages libtool m4 automake pkg-config libevent-dev libssl-dev make python3 python3-pypandoc libc-ares-dev libpam0g-dev libcap-ng-dev libaudit-dev
 
-RUN mkdir pgbouncer-git && cd pgbouncer-git && \
-    git clone https://github.com/${PGBOUNCER_REPO}.git . && \
-    git reset --hard ${PGBOUNCER_COMMIT} && \
-    git submodule init && \
-    git submodule update && \
-    ./autogen.sh && \
+COPY pgbouncer-git /pgbouncer-git
+WORKDIR /pgbouncer-git
+
+RUN ./autogen.sh && \
     ./configure --prefix=/opt/bitnami/pgbouncer --with-pam --with-cares && \
     make && \
     make install
@@ -25,8 +22,6 @@ RUN mkdir pgbouncer-git && cd pgbouncer-git && \
 FROM docker.io/bitnami/minideb:bullseye
 
 ARG TARGETARCH
-ARG PGBOUNCER_COMMIT=619c661b18fe9d456f05cf50470b3f7edacdb13b
-ARG GITHUB_RUN_ID=local
 
 LABEL com.vmware.cp.artifact.flavor="sha256:1e1b4657a77f0d47e9220f0c37b9bf7802581b93214fff7d1bd2364c8bf22e8e" \
       org.opencontainers.image.base.name="docker.io/bitnami/minideb:bullseye" \
@@ -84,8 +79,6 @@ ENV APP_VERSION="1.20.1" \
     LANGUAGE="en_US:en" \
     NSS_WRAPPER_LIB="/opt/bitnami/common/lib/libnss_wrapper.so" \
     PATH="/opt/bitnami/common/bin:/opt/bitnami/postgresql/bin:/opt/bitnami/pgbouncer/bin:$PATH"
-
-RUN echo "${APP_VERSION}-${PGBOUNCER_COMMIT::12}-${GITHUB_RUN_ID}" > /opt/bitnami/pgbouncer/VERSION.txt
 
 EXPOSE 6432
 
